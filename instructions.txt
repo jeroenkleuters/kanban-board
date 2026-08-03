@@ -1,0 +1,24 @@
+create a Kanban board
+
+features:
+- name is: My Kanban Board
+- ask for username and store it
+- 3 columns: todo, doing, done
+- only possible to create new items in the todo column
+- items have 4 subitems
+- subitems are: code, review, test, done
+- subitems have a checkbox to determine it is done
+- when subitem is set done, show the user who set the item done in small letters
+- only possible to set subitem status in doing column
+- drag and drop between different columns
+- dragging from todo to doing assigns current username
+
+technical requirements:
+- HTML, CSS, Javascript
+- use local storage for remembering the state
+
+visual requirements:
+- use Trello as design reverence
+- use light grey colours for the cards 30% black
+- cards will have a 3px border with 60% black
+- tilt the card 10% clockwise when dragging
