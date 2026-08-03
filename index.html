@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Kanban Board</title>
+<style>
+  :root{
+    --card-bg: #b3b3b3;        /* light grey, 30% black over white */
+    --card-border: #666666;    /* 60% black */
+    --board-bg-1: #0a3d62;
+    --board-bg-2: #1e5f8c;
+    --col-bg: #ebecf0;
+    --col-header: #172b4d;
+    --accent: #0079bf;
+    --text-dark: #172b4d;
+    --text-muted: #5e6c84;
+    --white: #ffffff;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, var(--board-bg-1), var(--board-bg-2));
+    min-height: 100vh;
+    color: var(--text-dark);
+  }
+
+  header.topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 12px 20px;
+    background: rgba(0,0,0,0.18);
+    backdrop-filter: blur(2px);
+  }
+
+  header.topbar h1{
+    color: var(--white);
+    font-size: 20px;
+    margin:0;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+
+  .user-badge{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color: var(--white);
+    font-size: 14px;
+    background: rgba(255,255,255,0.15);
+    padding: 6px 12px;
+    border-radius: 20px;
+  }
+
+  .user-badge .dot{
+    width:22px;height:22px;border-radius:50%;
+    background: var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px; font-weight:700; color:white;
+  }
+
+  .board{
+    display:flex;
+    gap: 16px;
+    padding: 20px;
+    align-items:flex-start;
+    overflow-x:auto;
+  }
+
+  .column{
+    background: var(--col-bg);
+    border-radius: 10px;
+    width: 300px;
+    min-width: 300px;
+    padding: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    display:flex;
+    flex-direction:column;
+  }
+
+  .column.drag-over{
+    outline: 2px dashed var(--accent);
+    outline-offset: -4px;
+    background: #dfe6f0;
+  }
+
+  .column-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 6px 8px 10px 8px;
+  }
+
+  .column-header h2{
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin:0;
+    color: var(--col-header);
+  }
+
+  .count-pill{
+    background: rgba(9,30,66,0.13);
+    color: var(--text-muted);
+    border-radius: 12px;
+    padding: 1px 8px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .card-list{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap: 8px;
+    min-height: 40px;
+  }
+
+  .card{
+    background: var(--card-bg);
+    border: 3px solid var(--card-border);
+    border-radius: 6px;
+    padding: 10px 10px 8px 10px;
+    cursor: grab;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    box-shadow: 0 1px 0 rgba(9,30,66,0.25);
+  }
+
+  .card:active{ cursor: grabbing; }
+
+  .card.dragging{
+    transform: rotate(10deg);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+    opacity: 0.9;
+  }
+
+  .card-title{
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-dark);
+    margin-bottom: 6px;
+    word-break: break-word;
+  }
+
+  .card-assignee{
+    font-size: 11px;
+    color: #2b2b2b;
+    margin-bottom: 6px;
+    font-style: italic;
+  }
+
+  .subitem-list{
+    display:flex;
+    flex-direction:column;
+    gap: 3px;
+    margin-top: 4px;
+  }
+
+  .subitem{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size: 12px;
+    color: #1c1c1c;
+  }
+
+  .subitem input[type="checkbox"]{
+    width: 14px;
+    height: 14px;
+    cursor: not-allowed;
+    accent-color: var(--accent);
+  }
+
+  .column[data-col="doing"] .subitem input[type="checkbox"]{
+    cursor: pointer;
+  }
+
+  .subitem-name.done{
+    text-decoration: line-through;
+    color: #3a3a3a;
+  }
+
+  .subitem-by{
+    font-size: 9px;
+    color: #333333;
+    margin-left: 2px;
+  }
+
+  .progress-track{
+    height: 5px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .progress-fill{
+    height:100%;
+    background: #2f6b2f;
+  }
+
+  .add-card-form{
+    margin-top: 6px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .add-card-form input{
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #c2c8d2;
+    font-size: 13px;
+  }
+
+  .add-card-btn, .add-card-form button{
+    background: none;
+    border:none;
+    text-align:left;
+    padding: 8px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .add-card-btn:hover{ background: rgba(9,30,66,0.08); color: var(--text-dark); }
+
+  .add-card-form button.confirm{
+    align-self:flex-start;
+    background: var(--accent);
+    color: white;
+    font-weight:600;
+  }
+  .add-card-form button.cancel{
+    color: var(--text-muted);
+  }
+
+  .locked-hint{
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 4px 8px 0 8px;
+  }
+
+  /* Modal */
+  .modal-overlay{
+    position: fixed; inset:0;
+    background: rgba(9,30,66,0.6);
+    display:flex; align-items:center; justify-content:center;
+    z-index: 999;
+  }
+  .modal{
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    width: 320px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  .modal h2{ margin-top:0; font-size:18px; color: var(--text-dark); }
+  .modal p{ font-size: 13px; color: var(--text-muted); margin-top:-6px;}
+  .modal input{
+    width:100%;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #c2c8d2;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .modal button{
+    width:100%;
+    padding: 10px;
+    border-radius: 4px;
+    border:none;
+    background: var(--accent);
+    color:white;
+    font-weight:600;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="modal-overlay" id="usernameModal">
+  <div class="modal">
+    <h2>Welcome</h2>
+    <p>Enter a username to start using the board.</p>
+    <input type="text" id="usernameInput" placeholder="e.g. jane" maxlength="24" />
+    <button id="usernameSubmit">Continue</button>
+  </div>
+</div>
+
+<header class="topbar">
+  <h1>My Kanban Board</h1>
+  <div class="user-badge" id="userBadge" style="display:none;">
+    <span class="dot" id="userDot"></span>
+    <span id="userName"></span>
+  </div>
+</header>
+
+<div class="board" id="board">
+  <div class="column" data-col="todo">
+    <div class="column-header">
+      <h2>To do</h2>
+      <span class="count-pill" id="count-todo">0</span>
+    </div>
+    <div class="card-list" id="list-todo"></div>
+    <button class="add-card-btn" id="addCardBtn">+ Add a card</button>
+    <div class="add-card-form hidden" id="addCardForm">
+      <input type="text" id="newCardTitle" placeholder="Enter a title for this card..." maxlength="60" />
+      <div style="display:flex; gap:8px;">
+        <button class="confirm" id="confirmAddCard">Add card</button>
+        <button class="cancel" id="cancelAddCard">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="column" data-col="doing">
+    <div class="column-header">
+      <h2>Doing</h2>
+      <span class="count-pill" id="count-doing">0</span>
+    </div>
+    <div class="card-list" id="list-doing"></div>
+    <div class="locked-hint">Drag a card here to work on it.</div>
+  </div>
+
+  <div class="column" data-col="done">
+    <div class="column-header">
+      <h2>Done</h2>
+      <span class="count-pill" id="count-done">0</span>
+    </div>
+    <div class="card-list" id="list-done"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "kanban_board_state_v1";
+  var USER_KEY = "kanban_board_username_v1";
+  var SUBITEM_NAMES = ["code", "review", "test", "done"];
+  var COLUMNS = ["todo", "doing", "done"];
+
+  var state = null;
+  var username = null;
+  var draggedCardId = null;
+  var draggedFromCol = null;
+
+  // ---------- storage helpers ----------
+  // Uses localStorage so the board is remembered on reload in a normal
+  // browser. Falls back to an in-memory object if localStorage is
+  // unavailable (e.g. some sandboxed preview environments).
+  var memoryFallback = {};
+  var storageWorks = (function(){
+    try{
+      var t = "__kanban_test__";
+      window.localStorage.setItem(t, "1");
+      window.localStorage.removeItem(t);
+      return true;
+    }catch(e){
+      return false;
+    }
+  })();
+
+  function storageGet(key){
+    if(storageWorks){ return window.localStorage.getItem(key); }
+    return memoryFallback[key] || null;
+  }
+  function storageSet(key, value){
+    if(storageWorks){ window.localStorage.setItem(key, value); }
+    else{ memoryFallback[key] = value; }
+  }
+
+  function loadState(){
+    var raw = storageGet(STORAGE_KEY);
+    if(raw){
+      try{ return JSON.parse(raw); }catch(e){ /* fall through */ }
+    }
+    return { todo: [], doing: [], done: [] };
+  }
+
+  function saveState(){
+    storageSet(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function loadUsername(){
+    return storageGet(USER_KEY);
+  }
+
+  function saveUsername(name){
+    storageSet(USER_KEY, name);
+  }
+
+  // ---------- model ----------
+  function makeSubitems(){
+    return SUBITEM_NAMES.map(function(n){
+      return { name: n, done: false, doneBy: null };
+    });
+  }
+
+  function makeCard(title){
+    return {
+      id: "c" + Date.now() + Math.floor(Math.random()*10000),
+      title: title,
+      assignee: null,
+      subitems: makeSubitems()
+    };
+  }
+
+  // ---------- rendering ----------
+  function render(){
+    COLUMNS.forEach(function(col){
+      var listEl = document.getElementById("list-" + col);
+      listEl.innerHTML = "";
+      var cards = state[col];
+      document.getElementById("count-" + col).textContent = cards.length;
+      cards.forEach(function(card){
+        listEl.appendChild(renderCard(card, col));
+      });
+    });
+  }
+
+  function renderCard(card, col){
+    var el = document.createElement("div");
+    el.className = "card";
+    el.draggable = true;
+    el.dataset.id = card.id;
+
+    var title = document.createElement("div");
+    title.className = "card-title";
+    title.textContent = card.title;
+    el.appendChild(title);
+
+    if(card.assignee){
+      var assignee = document.createElement("div");
+      assignee.className = "card-assignee";
+      assignee.textContent = "assigned to " + card.assignee;
+      el.appendChild(assignee);
+    }
+
+    var subList = document.createElement("div");
+    subList.className = "subitem-list";
+    var doneCount = 0;
+
+    card.subitems.forEach(function(sub, idx){
+      if(sub.done) doneCount++;
+      var row = document.createElement("label");
+      row.className = "subitem";
+
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = sub.done;
+      cb.disabled = (col !== "doing");
+      cb.addEventListener("change", function(){
+        toggleSubitem(col, card.id, idx, cb.checked);
+      });
+      row.appendChild(cb);
+
+      var name = document.createElement("span");
+      name.className = "subitem-name" + (sub.done ? " done" : "");
+      name.textContent = sub.name;
+      row.appendChild(name);
+
+      if(sub.done && sub.doneBy){
+        var by = document.createElement("span");
+        by.className = "subitem-by";
+        by.textContent = "(" + sub.doneBy + ")";
+        row.appendChild(by);
+      }
+
+      subList.appendChild(row);
+    });
+
+    el.appendChild(subList);
+
+    var track = document.createElement("div");
+    track.className = "progress-track";
+    var fill = document.createElement("div");
+    fill.className = "progress-fill";
+    fill.style.width = Math.round((doneCount / card.subitems.length) * 100) + "%";
+    track.appendChild(fill);
+    el.appendChild(track);
+
+    // drag events
+    el.addEventListener("dragstart", function(e){
+      draggedCardId = card.id;
+      draggedFromCol = col;
+      el.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      try{ e.dataTransfer.setData("text/plain", card.id); }catch(err){}
+    });
+    el.addEventListener("dragend", function(){
+      el.classList.remove("dragging");
+      draggedCardId = null;
+      draggedFromCol = null;
+    });
+
+    return el;
+  }
+
+  function toggleSubitem(col, cardId, subIdx, checked){
+    if(col !== "doing") return; // guard, should already be disabled
+    var card = state[col].find(function(c){ return c.id === cardId; });
+    if(!card) return;
+    var sub = card.subitems[subIdx];
+    sub.done = checked;
+    sub.doneBy = checked ? username : null;
+    saveState();
+    render();
+  }
+
+  // ---------- drag and drop on columns ----------
+  function setupColumnDropZones(){
+    COLUMNS.forEach(function(col){
+      var colEl = document.querySelector('.column[data-col="' + col + '"]');
+      colEl.addEventListener("dragover", function(e){
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        colEl.classList.add("drag-over");
+      });
+      colEl.addEventListener("dragleave", function(){
+        colEl.classList.remove("drag-over");
+      });
+      colEl.addEventListener("drop", function(e){
+        e.preventDefault();
+        colEl.classList.remove("drag-over");
+        if(!draggedCardId || !draggedFromCol) return;
+        moveCard(draggedCardId, draggedFromCol, col);
+      });
+    });
+  }
+
+  function moveCard(cardId, fromCol, toCol){
+    if(fromCol === toCol) return;
+    var fromList = state[fromCol];
+    var idx = fromList.findIndex(function(c){ return c.id === cardId; });
+    if(idx === -1) return;
+    var card = fromList[idx];
+    fromList.splice(idx, 1);
+
+    if(fromCol === "todo" && toCol === "doing"){
+      card.assignee = username;
+    }
+
+    state[toCol].push(card);
+    saveState();
+    render();
+  }
+
+  // ---------- add card (todo only) ----------
+  function setupAddCard(){
+    var addBtn = document.getElementById("addCardBtn");
+    var form = document.getElementById("addCardForm");
+    var input = document.getElementById("newCardTitle");
+    var confirmBtn = document.getElementById("confirmAddCard");
+    var cancelBtn = document.getElementById("cancelAddCard");
+
+    addBtn.addEventListener("click", function(){
+      addBtn.classList.add("hidden");
+      form.classList.remove("hidden");
+      input.value = "";
+      input.focus();
+    });
+
+    function closeForm(){
+      form.classList.add("hidden");
+      addBtn.classList.remove("hidden");
+    }
+
+    cancelBtn.addEventListener("click", closeForm);
+
+    function submitCard(){
+      var title = input.value.trim();
+      if(!title) { input.focus(); return; }
+      state.todo.push(makeCard(title));
+      saveState();
+      render();
+      closeForm();
+    }
+
+    confirmBtn.addEventListener("click", submitCard);
+    input.addEventListener("keydown", function(e){
+      if(e.key === "Enter") submitCard();
+      if(e.key === "Escape") closeForm();
+    });
+  }
+
+  // ---------- username modal ----------
+  function setupUsernameModal(){
+    var modal = document.getElementById("usernameModal");
+    var input = document.getElementById("usernameInput");
+    var submit = document.getElementById("usernameSubmit");
+    var badge = document.getElementById("userBadge");
+    var nameEl = document.getElementById("userName");
+    var dotEl = document.getElementById("userDot");
+
+    var existing = loadUsername();
+    if(existing){
+      username = existing;
+      modal.classList.add("hidden");
+      showBadge();
+      return;
+    }
+
+    modal.classList.remove("hidden");
+    input.focus();
+
+    function confirmName(){
+      var name = input.value.trim();
+      if(!name) { input.focus(); return; }
+      username = name;
+      saveUsername(name);
+      modal.classList.add("hidden");
+      showBadge();
+    }
+
+    submit.addEventListener("click", confirmName);
+    input.addEventListener("keydown", function(e){
+      if(e.key === "Enter") confirmName();
+    });
+
+    function showBadge(){
+      nameEl.textContent = username;
+      dotEl.textContent = username.charAt(0).toUpperCase();
+      badge.style.display = "flex";
+    }
+  }
+
+  function showBadgeIfReady(){
+    if(username){
+      var badge = document.getElementById("userBadge");
+      var nameEl = document.getElementById("userName");
+      var dotEl = document.getElementById("userDot");
+      nameEl.textContent = username;
+      dotEl.textContent = username.charAt(0).toUpperCase();
+      badge.style.display = "flex";
+    }
+  }
+
+  // ---------- init ----------
+  function init(){
+    state = loadState();
+    setupUsernameModal();
+    showBadgeIfReady();
+    setupAddCard();
+    setupColumnDropZones();
+    render();
+  }
+
+  init();
+})();
+</script>
+
+</body>
+</html>
